@@ -98,8 +98,9 @@ class App extends Component {
     this.updateTokenSaleBalance();
   };
   handleDeliverTokens = async () => {
+    const tokens = this.web3.utils.toWei(this.state.tokenNum, "wei");
     await this.tokenSaleInstance.methods
-      .deliverTokens(this.state.investorAddress, this.state.tokenNum)
+      .deliverTokens(this.state.investorAddress, tokens)
       .send({
         from: this.state.curAddress,
       });
@@ -197,8 +198,12 @@ class App extends Component {
               onChange={(event) => this.handleTokenSelectionChange(event)}
             >
               {this.state.tokenSymbol} - {this.state.tokenName}
-              {tokenList.map((token) => {
-                return <option value={token}>{token}</option>;
+              {tokenList.map((token, i) => {
+                return (
+                  <option value={token} key={i}>
+                    {token}
+                  </option>
+                );
               })}
             </select>
           </h1>
@@ -227,9 +232,8 @@ class App extends Component {
           <hr />
           <h1>Investor section</h1>
           <p>
-            Your wallet:{" "}
+            Your wallet:
             <strong>
-              {" "}
               <a
                 href={`https://ropsten.etherscan.io/address/${this.state.curAddress}`}
               >
