@@ -36,8 +36,8 @@ module.exports = {
     ropsten_infura: {
       provider: function () {
         return new HDWalletProvider(
-          process.env.MNEMONIC,
-          "https://ropsten.infura.io/v3/ffa60321cbbd4cfda3352014c556e3c3",
+          process.env.SECRET_KEY,
+          "https://ropsten.infura.io/v3/84b8371669e540c3add6a26bf7f5635d",
           AccountIndex
         );
       },

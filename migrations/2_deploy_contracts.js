@@ -10,7 +10,8 @@ module.exports = async function (deployer) {
     process.env.TOKEN_NAME,
     process.env.TOKEN_SYMBOL,
     process.env.INITIAL_TOKENS,
-    process.env.TOKEN_DECIMALS
+    process.env.TOKEN_DECIMALS,
+    process.env.ASSET_ADDRESS
   );
 
   await deployer.deploy(MyKycContract);

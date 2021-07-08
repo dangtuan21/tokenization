@@ -13,5 +13,10 @@
     "name": "john",
     "holdingPercentile": 15,
     "walletAddress": "0x7542616e043f7fCC91006c4B9D50D2D30Fa5c70f"
+  },
+  {
+    "name": "ron",
+    "holdingPercentile": 5,
+    "walletAddress": "0xf1d3d67ec6cfeca5ea0486cadc269c2587956574"
   }
 ]

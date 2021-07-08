@@ -160,7 +160,7 @@
         "id": 2,
         "nodeType": "ImportDirective",
         "scope": 50,
-        "sourceUnit": 1054,
+        "sourceUnit": 1073,
         "src": "29:55:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -174,10 +174,10 @@
               "id": 3,
               "name": "Ownable",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1053,
+              "referencedDeclaration": 1072,
               "src": "112:7:0",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Ownable_$1053",
+                "typeIdentifier": "t_contract$_Ownable_$1072",
                 "typeString": "contract Ownable"
               }
             },
@@ -187,8 +187,8 @@
           }
         ],
         "contractDependencies": [
-          283,
-          1053
+          302,
+          1072
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -196,8 +196,8 @@
         "id": 49,
         "linearizedBaseContracts": [
           49,
-          1053,
-          283
+          1072,
+          302
         ],
         "name": "KycContract",
         "nodeType": "ContractDefinition",
@@ -347,7 +347,7 @@
                   "name": "onlyOwner",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 986,
+                  "referencedDeclaration": 1005,
                   "src": "215:9:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -506,7 +506,7 @@
                   "name": "onlyOwner",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 986,
+                  "referencedDeclaration": 1005,
                   "src": "318:9:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -731,7 +731,7 @@
       },
       {
         "attributes": {
-          "SourceUnit": 1054,
+          "SourceUnit": 1073,
           "absolutePath": "@openzeppelin/contracts/ownership/Ownable.sol",
           "file": "@openzeppelin/contracts/ownership/Ownable.sol",
           "scope": 50,
@@ -747,16 +747,16 @@
       {
         "attributes": {
           "contractDependencies": [
-            283,
-            1053
+            302,
+            1072
           ],
           "contractKind": "contract",
           "documentation": null,
           "fullyImplemented": true,
           "linearizedBaseContracts": [
             49,
-            1053,
-            283
+            1072,
+            302
           ],
           "name": "KycContract",
           "scope": 50
@@ -771,7 +771,7 @@
                 "attributes": {
                   "contractScope": null,
                   "name": "Ownable",
-                  "referencedDeclaration": 1053,
+                  "referencedDeclaration": 1072,
                   "type": "contract Ownable"
                 },
                 "id": 3,
@@ -897,7 +897,7 @@
                       "overloadedDeclarations": [
                         null
                       ],
-                      "referencedDeclaration": 986,
+                      "referencedDeclaration": 1005,
                       "type": "modifier ()",
                       "value": "onlyOwner"
                     },
@@ -1074,7 +1074,7 @@
                       "overloadedDeclarations": [
                         null
                       ],
-                      "referencedDeclaration": 986,
+                      "referencedDeclaration": 1005,
                       "type": "modifier ()",
                       "value": "onlyOwner"
                     },
@@ -1348,12 +1348,12 @@
     "3": {
       "events": {},
       "links": {},
-      "address": "0x2A97700a06d51F00dE879C83a1668DfEb7fdC370",
-      "transactionHash": "0xdd1496128d7e89a0516ba684b915288ec421e9fe398e9331ae54dfc0a9171919"
+      "address": "0xe85831d9e3d3104fe0505A28EDF73Cd488388A79",
+      "transactionHash": "0xdce1fc29e2e21891e8119b419e19eb0a53ee849ec77fb4092790692ec912f7ec"
     }
   },
   "schemaVersion": "3.4.1",
-  "updatedAt": "2021-07-07T20:43:15.536Z",
+  "updatedAt": "2021-07-08T03:08:05.783Z",
   "networkType": "ethereum",
   "devdoc": {
     "methods": {

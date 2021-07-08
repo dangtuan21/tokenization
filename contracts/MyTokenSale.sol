@@ -37,5 +37,14 @@ contract MyTokenSale is Crowdsale, Ownable {
             require(kyc.kycCompleted(beneficiary), "KYC of this beneficiary not completed, deliver not allowed");
             super._deliverTokens(beneficiary, tokenAmount);
         }        
-    }         
+    } 
+    function kycCompletedOf(address[] memory accountList) public view returns (bool[] memory) {
+        bool[] memory kycCompleteds = new bool[](accountList.length);
+
+        for (uint j = 0; j < accountList.length; j++) {
+            address account = accountList[j];
+            kycCompleteds[j] = kyc.kycCompleted(account);
+        }          
+        return kycCompleteds;
+    }    
 }

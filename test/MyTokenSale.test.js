@@ -160,4 +160,56 @@ contract("TokenSale Test", async (accounts) => {
       await tokenInstance.balanceOf(investorList[2])
     ).to.be.bignumber.equal(new BN(0));
   });
+
+  it("should return list of balances", async () => {
+    let tokenInstance = this.MyToken;
+    let kycInstance = await KycContract.deployed();
+    let tokenSaleInstance = await TokenSale.deployed();
+
+    let balanceBefore = await tokenInstance.balanceOf(TokenSale.address);
+
+    const investorList = [
+      "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7",
+      "0x0472ec0185ebb8202f3d4ddb0226998889663cf2",
+    ];
+    const amountList = [5, 6];
+
+    for (let i = 0; i < investorList.length; i++) {
+      const invAddress = investorList[i];
+      await kycInstance.setKycCompleted(invAddress, {
+        from: deployerAccount,
+      });
+    }
+    await tokenSaleInstance.bulkDeliverTokens(investorList, amountList, {
+      from: deployerAccount,
+    });
+    const balances = await tokenInstance.balancesOf(investorList);
+
+    expect(balances[0]).to.be.bignumber.equal(new BN(5));
+    expect(balances[1]).to.be.bignumber.equal(new BN(6));
+  });
+  it("should return list of kycCompleted", async () => {
+    let kycInstance = await KycContract.deployed();
+    let tokenSaleInstance = await TokenSale.deployed();
+    const investorList = [
+      "0x031dAF6b49f8B9815449570F68e7e6DdeAae7077",
+      "0xbE3d7dfaA3D301DF3f42d8C7c6471830eceE10f4",
+      "0x4ACaa2d8A308B7885037253593B2959405087Acc",
+    ];
+
+    await kycInstance.setKycCompleted(investorList[0], {
+      from: deployerAccount,
+    });
+    await kycInstance.setKycCompleted(investorList[1], {
+      from: deployerAccount,
+    });
+    await kycInstance.setKycRevoked(investorList[2], {
+      from: deployerAccount,
+    });
+    const kycCompleteds = await tokenSaleInstance.kycCompletedOf(investorList);
+
+    expect(kycCompleteds[0]).to.equal(true);
+    expect(kycCompleteds[1]).to.equal(true);
+    expect(kycCompleteds[2]).to.equal(false);
+  });
 });

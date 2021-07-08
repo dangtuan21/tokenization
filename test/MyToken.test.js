@@ -14,7 +14,8 @@ contract("Token Test", async (accounts) => {
       process.env.TOKEN_NAME,
       process.env.TOKEN_SYMBOL,
       process.env.INITIAL_TOKENS,
-      process.env.TOKEN_DECIMALS
+      process.env.TOKEN_DECIMALS,
+      process.env.ASSET_ADDRESS
     );
   });
 

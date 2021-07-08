@@ -3,7 +3,6 @@ import getWeb3 from "./getWeb3";
 import { BrowserRouter as Router, Switch, Route, Link } from "react-router-dom";
 import "./App.css";
 import tokenList from "./data/tokens.json";
-import investorList from "./data/investors.json";
 import admin from "./data/admin.json";
 class App extends Component {
   state = {
@@ -22,6 +21,10 @@ class App extends Component {
     tokenSaleEthBalance: "",
     tokenSaleBalance: "",
     tokenNum: 0,
+    investorList: [],
+    assetAddress: "",
+    investorToBeWhiteListed: "",
+    investorToBeDelivered: "",
   };
 
   componentDidMount = async () => {
@@ -41,7 +44,12 @@ class App extends Component {
       this.networkId = await this.web3.eth.net.getId();
       const defaultTokenSymbol = tokenList[0];
       this.setState({ tokenSymbol: defaultTokenSymbol });
-      this.loadDataByToken(defaultTokenSymbol);
+
+      this.loadSmartContracts(defaultTokenSymbol);
+      this.loadInvestorList();
+      this.updateInvestorListBalances();
+      this.updateKycCompleted();
+      this.loadDataByToken();
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -51,6 +59,54 @@ class App extends Component {
     }
   };
 
+  async loadInvestorList() {
+    const investorList = require(`./data/investors.json`);
+    this.setState({ investorList });
+  }
+
+  async updateInvestorListBalances() {
+    const investorList = this.state.investorList;
+    const investorAddresses = investorList.map((item) => item.walletAddress);
+    const balances = await this.tokenInstance.methods
+      .balancesOf(investorAddresses)
+      .call();
+    for (let i = 0; i < investorList.length; i++) {
+      const investor = investorList[i];
+      //  fill balance
+      investor.balance = parseInt(balances[i]);
+    }
+    this.setState({ investorList });
+  }
+
+  async updateKycCompleted() {
+    const investorList = this.state.investorList;
+    const investorAddresses = investorList.map((item) => item.walletAddress);
+    const kycCompleteds = await this.tokenSaleInstance.methods
+      .kycCompletedOf(investorAddresses)
+      .call();
+    for (let i = 0; i < investorList.length; i++) {
+      const investor = investorList[i];
+      //  fill kycCompleted
+      investor.kycCompleted = kycCompleteds[i];
+    }
+    this.setState({ investorList });
+  }
+
+  updateAmountToDeliver() {
+    const tokenSaleBalance = this.state.tokenSaleBalance;
+    const investorList = this.state.investorList;
+    for (let i = 0; i < investorList.length; i++) {
+      const investor = investorList[i];
+      //  fill amountToDeliver
+      let tokenNum = investor.holdingPercentile * 0.01 * tokenSaleBalance;
+      tokenNum = Math.round(tokenNum);
+      tokenNum = this.web3.utils.toWei(tokenNum.toString(), "wei");
+
+      investor.amountToDeliver = tokenNum;
+    }
+
+    this.setState({ investorList });
+  }
   async getEthBalance(address) {
     let balance = await this.web3.eth.getBalance(address);
     balance = this.web3.utils.fromWei(balance, "ether").substr(0, 5);
@@ -64,16 +120,25 @@ class App extends Component {
     this.setState({ isWhiteListed });
   }
 
-  updateUserTokens = async () => {
+  onTokenChanged = async () => {
+    //  update Balances of Tokens
     const userTokens = await this.getTokenBalance(this.state.curAddress);
     this.setState({ userTokens });
+    //  update TokenSaleBalance
+    this.updateTokenSaleBalance();
+    //  update Balances of Investor
+    this.updateInvestorListBalances();
   };
 
   updateTokenSaleBalance = async () => {
-    const tokenSaleBalance = await this.getTokenBalance(
+    let tokenSaleBalance = await this.getTokenBalance(
       this.state.tokenSaleAddress
     );
+    tokenSaleBalance = parseInt(tokenSaleBalance);
     this.setState({ tokenSaleBalance });
+
+    //  update amountToDeliver
+    this.updateAmountToDeliver();
   };
 
   async getTokenBalance(address) {
@@ -87,7 +152,7 @@ class App extends Component {
   listenToTokenTransfer = () => {
     this.tokenInstance.events
       .Transfer({ to: this.state.curAddress })
-      .on("data", this.updateUserTokens);
+      .on("data", this.onTokenChanged);
   };
 
   handleBuyTokens = async () => {
@@ -103,7 +168,10 @@ class App extends Component {
       alert("This should be done by Admin!");
       return;
     }
-    await this.deliverTokens(this.state.tokenNum, this.state.investorAddress);
+    await this.deliverTokens(
+      this.state.tokenNum,
+      this.state.investorToBeDelivered
+    );
     this.updateTokenSaleBalance();
   };
   handleBulkDeliverTokens = async () => {
@@ -111,11 +179,14 @@ class App extends Component {
       alert("This should be done by Admin!");
       return;
     }
-    const investorAddresses = investorList.map((item) => item.walletAddress);
+    const investorAddresses = this.state.investorList.map(
+      (item) => item.walletAddress
+    );
 
     const amountList = [];
-    for (const investor of investorList) {
+    for (const investor of this.state.investorList) {
       try {
+        //ttt
         let tokenNum =
           investor.holdingPercentile * 0.01 * this.state.tokenSaleBalance;
         tokenNum = Math.round(tokenNum);
@@ -163,6 +234,7 @@ class App extends Component {
     const target = event.target;
     const value = target.type === "checkbox" ? target.checked : target.value;
     const name = target.name;
+    debugger;
     this.setState({
       [name]: value,
     });
@@ -170,17 +242,18 @@ class App extends Component {
 
   handleKycWhitelisting = async () => {
     await this.kycInstance.methods
-      .setKycCompleted(this.state.kycAddress)
+      .setKycCompleted(this.state.investorToBeWhiteListed)
       .send({ from: this.state.curAddress });
-    alert("KYC for " + this.state.kycAddress + " is completed");
+    alert("KYC for " + this.state.investorToBeWhiteListed + " is completed");
   };
   handleTokenSelectionChange(event) {
     const tokenSymbol = event.target.value;
     this.setState({ tokenSymbol });
 
-    this.loadDataByToken(tokenSymbol);
+    this.loadSmartContracts(tokenSymbol);
+    this.loadDataByToken();
   }
-  async loadDataByToken(tokenSymbol) {
+  async loadSmartContracts(tokenSymbol) {
     const KycContract = require(`./blockchain/contracts_${tokenSymbol}/KycContract.json`);
     const MyToken = require(`./blockchain/contracts_${tokenSymbol}/MyToken.json`);
     const MyTokenSale = require(`./blockchain/contracts_${tokenSymbol}/MyTokenSale.json`);
@@ -201,14 +274,20 @@ class App extends Component {
       KycContract.networks[this.networkId] &&
         KycContract.networks[this.networkId].address
     );
-    const kycAddress = KycContract.networks[this.networkId].address;
+  }
+  async loadDataByToken() {
+    const kycAddress = this.tokenInstance._address;
     const tokenName = await this.tokenInstance.methods.name().call();
 
     try {
       //  metadata
-      const myStandard = await this.tokenInstance.methods.myStandard().call();
+      const assetAddress = await this.tokenInstance.methods
+        .assetAddress()
+        .call();
+      this.setState({ assetAddress });
     } catch (error) {}
-    const tokenAddress = MyToken.networks[this.networkId].address;
+
+    const tokenAddress = this.tokenInstance._address;
 
     this.setState({ tokenName });
     this.setState({ tokenAddress });
@@ -218,13 +297,13 @@ class App extends Component {
 
     this.listenToTokenTransfer();
 
-    const tokenSaleAddress = MyTokenSale.networks[this.networkId].address;
+    const tokenSaleAddress = this.tokenSaleInstance._address;
     this.setState(
       {
         loaded: true,
         tokenSaleAddress,
       },
-      this.updateUserTokens
+      this.onTokenChanged
     );
 
     //  tokenSale
@@ -240,128 +319,160 @@ class App extends Component {
     return (
       <Router>
         <div className="App">
-          <h1>
-            {this.state.tokenSymbol} - {this.state.tokenName}
-            <select
-              value={this.state.tokenSymbol}
-              onChange={(event) => this.handleTokenSelectionChange(event)}
-            >
-              {this.state.tokenSymbol} - {this.state.tokenName}
-              {tokenList.map((token, i) => {
-                return (
-                  <option value={token} key={i}>
-                    {token}
-                  </option>
-                );
-              })}
-            </select>
-          </h1>
-          <h3>
-            <a
-              href={`https://ropsten.etherscan.io/address/${this.state.tokenAddress}`}
-            >
-              {this.state.tokenAddress}
-            </a>
-          </h3>
-          <p>
-            TokenSale address:
-            <a
-              href={`https://ropsten.etherscan.io/address/${this.state.tokenSaleAddress}`}
-            >
-              {this.state.tokenSaleAddress}
-            </a>
-            <br />
-            TokenSale Balance: ETH:
-            <strong>{this.state.tokenSaleEthBalance}</strong>
-            <br />
-            {this.state.tokenSymbol}:
-            <strong>{this.state.tokenSaleBalance}</strong>
-            <br />
-            KYC address:
-            <a
-              href={`https://ropsten.etherscan.io/address/${this.state.kycAddress}`}
-            >
-              {this.state.kycAddress}
-            </a>
-            <br />
-          </p>
-
           <hr />
-          <h1>Investor section</h1>
-          <p>
-            Your wallet:
-            <strong>
-              <a
-                href={`https://ropsten.etherscan.io/address/${this.state.curAddress}`}
-              >
-                {this.state.curAddress}
-              </a>
-            </strong>
-            <br />
-            Your Balance: ETH: <strong> {this.state.curBalance}</strong>
-            <br />
-            {this.state.tokenSymbol}: <strong> {this.state.userTokens} </strong>
-          </p>
-          <h3>Is Kyc Whitelisted? {this.state.isWhiteListed.toString()}</h3>
-          <hr />
-          <h1> Admin section</h1>
-          <p>
-            Investor to be added to WhiteList:
-            <input
-              type="text"
-              name="kycAddress"
-              value={this.state.kycAddress}
-              onChange={this.handleInputChange}
-            />
-            <button type="button" onClick={this.handleKycWhitelisting}>
-              Add to Whitelist
-            </button>
-          </p>
-          <h2>Deliver {this.state.tokenSymbol} for 1 Investor</h2>
-          <p>
-            Deliver
-            <input
-              type="number"
-              name="tokenNum"
-              value={this.state.tokenNum}
-              onChange={this.handleInputChange}
-            />
-            {this.state.tokenSymbol} to Investor:
-            <input
-              type="text"
-              name="investorAddress"
-              value={this.state.investorAddress}
-              onChange={this.handleInputChange}
-            />
-            <button type="button" onClick={this.handleDeliverTokens}>
-              Deliver
-            </button>
-          </p>
-          <hr />
-          <h2>Deliver {this.state.tokenSymbol} to bulk of Investors</h2>
-          <table style={{ width: "100%" }}>
+          <table
+            style={{
+              width: "100%",
+              height: "100%",
+              backgroundColor: "#E0E0E0",
+            }}
+          >
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Percentile</th>
-                <th>Wallet</th>
+                <td colSpan="2">
+                  <h1>
+                    {this.state.tokenSymbol} - {this.state.tokenName}
+                    <select
+                      value={this.state.tokenSymbol}
+                      onChange={(event) =>
+                        this.handleTokenSelectionChange(event)
+                      }
+                    >
+                      {this.state.tokenSymbol} - {this.state.tokenName}
+                      {tokenList.map((token, i) => {
+                        return (
+                          <option value={token} key={i}>
+                            {token}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </h1>
+                  <h2>{this.state.assetAddress}</h2>
+                  <h3>
+                    <a
+                      href={`https://ropsten.etherscan.io/address/${this.state.tokenAddress}`}
+                    >
+                      {this.state.tokenAddress}
+                    </a>
+                  </h3>
+                  <p>
+                    TokenManager address:
+                    <a
+                      href={`https://ropsten.etherscan.io/address/${this.state.tokenSaleAddress}`}
+                    >
+                      {this.state.tokenSaleAddress}
+                    </a>
+                    <br />
+                    TokenManager Balance: ETH:
+                    <strong>{this.state.tokenSaleEthBalance}</strong>
+                    <br />
+                    {this.state.tokenSymbol}:
+                    <strong>{this.state.tokenSaleBalance}</strong>
+                    <br />
+                    KYC address:
+                    <a
+                      href={`https://ropsten.etherscan.io/address/${this.state.kycAddress}`}
+                    >
+                      {this.state.kycAddress}
+                    </a>
+                    <br />
+                  </p>
+                </td>
               </tr>
             </thead>
             <tbody>
-              {investorList.map((investor, i) => {
-                return (
-                  <tr key={i}>
-                    <td>{investor.name}</td>
-                    <td>{investor.holdingPercentile}</td>
-                    <td>{investor.walletAddress}</td>
-                  </tr>
-                );
-              })}
+              <tr>
+                <td style={{ width: "30%", backgroundColor: "#CCFFE5" }}>
+                  <h1>Investor section</h1>
+                  <p>
+                    Your wallet:
+                    <strong>
+                      <a
+                        href={`https://ropsten.etherscan.io/address/${this.state.curAddress}`}
+                      >
+                        {this.state.curAddress}
+                      </a>
+                    </strong>
+                    <br />
+                    Your Balance: ETH: <strong> {this.state.curBalance}</strong>
+                    <br />
+                    {this.state.tokenSymbol}:{" "}
+                    <strong> {this.state.userTokens} </strong>
+                  </p>
+                  <h3>
+                    Is Kyc Whitelisted? {this.state.isWhiteListed.toString()}
+                  </h3>
+                </td>
+                <td style={{ width: "70%", backgroundColor: "#CCFFFF" }}>
+                  <h1>Admin section</h1>
+                  <p>
+                    Investor to be added to WhiteList:
+                    <input
+                      type="text"
+                      name="investorToBeWhiteListed"
+                      value={this.state.investorToBeWhiteListed}
+                      onChange={this.handleInputChange}
+                    />
+                    <button type="button" onClick={this.handleKycWhitelisting}>
+                      Add to Whitelist
+                    </button>
+                  </p>
+                  <h2>Deliver {this.state.tokenSymbol} for 1 Investor</h2>
+                  <p>
+                    Deliver
+                    <input
+                      type="number"
+                      name="tokenNum"
+                      value={this.state.tokenNum}
+                      onChange={this.handleInputChange}
+                    />
+                    {this.state.tokenSymbol} to Investor:
+                    <input
+                      type="text"
+                      name="investorToBeDelivered"
+                      value={this.state.investorToBeDelivered}
+                      onChange={this.handleInputChange}
+                    />
+                    <button type="button" onClick={this.handleDeliverTokens}>
+                      Deliver
+                    </button>
+                  </p>
+                  <hr />
+                  <h2>Deliver {this.state.tokenSymbol} to bulk of Investors</h2>
+                  <table style={{ width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Wallet</th>
+                        <th>Balance</th>
+                        <th>Percentile</th>
+                        <th>KYC Completed?</th>
+                        <th>Amount to deliver</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {this.state.investorList.map((investor, i) => {
+                        return (
+                          <tr key={i}>
+                            <td>{investor.name}</td>
+                            <td>{investor.walletAddress}</td>
+                            <td>{investor.balance}</td>
+                            <td>{investor.holdingPercentile}</td>
+                            <td>{investor.kycCompleted.toString()}</td>
+                            <td>{investor.amountToDeliver}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <button type="button" onClick={this.handleBulkDeliverTokens}>
+                    Bulk Deliver
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
-          <button type="button" onClick={this.handleBulkDeliverTokens}>
-            Bulk Deliver
-          </button>
         </div>
       </Router>
     );
