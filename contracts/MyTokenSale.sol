@@ -29,4 +29,13 @@ contract MyTokenSale is Crowdsale, Ownable {
         require(kyc.kycCompleted(beneficiary), "KYC of this beneficiary not completed, deliver not allowed");
         super._deliverTokens(beneficiary, tokenAmount);
     }         
+    function bulkDeliverTokens(address[] calldata beneficiaryList, uint256[] calldata amountList) external payable onlyOwner {
+        require(beneficiaryList.length == amountList.length, "Array sizes of beneficiary and tokenAmount should be the same");
+        for (uint j = 0; j < beneficiaryList.length; j++) {
+            address beneficiary = beneficiaryList[j];
+            uint256 tokenAmount = amountList[j];
+            require(kyc.kycCompleted(beneficiary), "KYC of this beneficiary not completed, deliver not allowed");
+            super._deliverTokens(beneficiary, tokenAmount);
+        }        
+    }         
 }

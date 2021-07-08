@@ -1,0 +1,17 @@
+[
+  {
+    "name": "david",
+    "holdingPercentile": 10,
+    "walletAddress": "0x79BbD58d487190FAbfB69B6442CA47e5Be6f8fA2"
+  },
+  {
+    "name": "jenna",
+    "holdingPercentile": 20,
+    "walletAddress": "0x504C6307702167a2DDECfb835E4AcA1456ade96a"
+  },
+  {
+    "name": "john",
+    "holdingPercentile": 15,
+    "walletAddress": "0x7542616e043f7fCC91006c4B9D50D2D30Fa5c70f"
+  }
+]

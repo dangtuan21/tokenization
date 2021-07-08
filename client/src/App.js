@@ -2,8 +2,9 @@ import React, { Component } from "react";
 import getWeb3 from "./getWeb3";
 import { BrowserRouter as Router, Switch, Route, Link } from "react-router-dom";
 import "./App.css";
-import tokenList from "./tokens.json";
-
+import tokenList from "./data/tokens.json";
+import investorList from "./data/investors.json";
+import admin from "./data/admin.json";
 class App extends Component {
   state = {
     loaded: false,
@@ -98,13 +99,54 @@ class App extends Component {
     this.updateTokenSaleBalance();
   };
   handleDeliverTokens = async () => {
-    const tokens = this.web3.utils.toWei(this.state.tokenNum, "wei");
-    await this.tokenSaleInstance.methods
-      .deliverTokens(this.state.investorAddress, tokens)
-      .send({
-        from: this.state.curAddress,
-      });
+    if (this.state.curAddress !== admin.walletAddress) {
+      alert("This should be done by Admin!");
+      return;
+    }
+    await this.deliverTokens(this.state.tokenNum, this.state.investorAddress);
     this.updateTokenSaleBalance();
+  };
+  handleBulkDeliverTokens = async () => {
+    if (this.state.curAddress !== admin.walletAddress) {
+      alert("This should be done by Admin!");
+      return;
+    }
+    const investorAddresses = investorList.map((item) => item.walletAddress);
+
+    const amountList = [];
+    for (const investor of investorList) {
+      try {
+        let tokenNum =
+          investor.holdingPercentile * 0.01 * this.state.tokenSaleBalance;
+        tokenNum = Math.round(tokenNum);
+        tokenNum = this.web3.utils.toWei(tokenNum.toString(), "wei");
+
+        amountList.push(tokenNum);
+      } catch (error) {
+        console.error("Can not deliver to ", investor.walletAddress);
+      }
+    }
+    await this.bulkDeliverTokens(investorAddresses, amountList);
+    this.updateTokenSaleBalance();
+  };
+
+  deliverTokens = async (tokenNum, wallet) => {
+    const tokens = this.web3.utils.toWei(tokenNum, "wei");
+    await this.tokenSaleInstance.methods.deliverTokens(wallet, tokens).send({
+      from: this.state.curAddress,
+    });
+  };
+  bulkDeliverTokens = async (investorAddresses, amountList) => {
+    try {
+      await this.tokenSaleInstance.methods
+        .bulkDeliverTokens(investorAddresses, amountList)
+        .send({
+          from: this.state.curAddress,
+        });
+    } catch (error) {
+      debugger;
+      alert("Error", error.message);
+    }
   };
   handleSellTokens = async () => {
     await this.tokenSaleInstance.methods
@@ -159,11 +201,18 @@ class App extends Component {
       KycContract.networks[this.networkId] &&
         KycContract.networks[this.networkId].address
     );
+    const kycAddress = KycContract.networks[this.networkId].address;
     const tokenName = await this.tokenInstance.methods.name().call();
+
+    try {
+      //  metadata
+      const myStandard = await this.tokenInstance.methods.myStandard().call();
+    } catch (error) {}
     const tokenAddress = MyToken.networks[this.networkId].address;
 
     this.setState({ tokenName });
     this.setState({ tokenAddress });
+    this.setState({ kycAddress });
 
     this.updateIsWhiteListed();
 
@@ -227,6 +276,14 @@ class App extends Component {
             <br />
             {this.state.tokenSymbol}:
             <strong>{this.state.tokenSaleBalance}</strong>
+            <br />
+            KYC address:
+            <a
+              href={`https://ropsten.etherscan.io/address/${this.state.kycAddress}`}
+            >
+              {this.state.kycAddress}
+            </a>
+            <br />
           </p>
 
           <hr />
@@ -260,7 +317,7 @@ class App extends Component {
               Add to Whitelist
             </button>
           </p>
-
+          <h2>Deliver {this.state.tokenSymbol} for 1 Investor</h2>
           <p>
             Deliver
             <input
@@ -280,6 +337,31 @@ class App extends Component {
               Deliver
             </button>
           </p>
+          <hr />
+          <h2>Deliver {this.state.tokenSymbol} to bulk of Investors</h2>
+          <table style={{ width: "100%" }}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Percentile</th>
+                <th>Wallet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {investorList.map((investor, i) => {
+                return (
+                  <tr key={i}>
+                    <td>{investor.name}</td>
+                    <td>{investor.holdingPercentile}</td>
+                    <td>{investor.walletAddress}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <button type="button" onClick={this.handleBulkDeliverTokens}>
+            Bulk Deliver
+          </button>
         </div>
       </Router>
     );
