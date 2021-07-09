@@ -25,6 +25,7 @@ class App extends Component {
     assetAddress: "",
     investorToBeWhiteListed: "",
     investorToBeDelivered: "",
+    bulkTokenToBeDelivered: 0,
   };
 
   componentDidMount = async () => {
@@ -93,7 +94,7 @@ class App extends Component {
   }
 
   updateAmountToDeliver() {
-    const tokenSaleBalance = this.state.tokenSaleBalance;
+    const tokenSaleBalance = this.state.bulkTokenToBeDelivered;
     const investorList = this.state.investorList;
     for (let i = 0; i < investorList.length; i++) {
       const investor = investorList[i];
@@ -172,11 +173,27 @@ class App extends Component {
       this.state.tokenNum,
       this.state.investorToBeDelivered
     );
+    alert("Deliver Tokens is completed!");
+
+    this.setState({ tokenNum: 0 });
+    this.setState({ investorToBeDelivered: "" });
+
     this.updateTokenSaleBalance();
+    this.updateInvestorListBalances();
+  };
+  handleUpdateTokenToDeliver = async () => {
+    if (this.state.curAddress !== admin.walletAddress) {
+      alert("This should be done by Admin!");
+      return;
+    }
+    this.updateAmountToDeliver();
   };
   handleBulkDeliverTokens = async () => {
     if (this.state.curAddress !== admin.walletAddress) {
       alert("This should be done by Admin!");
+      return;
+    }
+    if (!this.verifyKyc()) {
       return;
     }
     const investorAddresses = this.state.investorList.map(
@@ -186,9 +203,8 @@ class App extends Component {
     const amountList = [];
     for (const investor of this.state.investorList) {
       try {
-        //ttt
         let tokenNum =
-          investor.holdingPercentile * 0.01 * this.state.tokenSaleBalance;
+          investor.holdingPercentile * 0.01 * this.state.bulkTokenToBeDelivered;
         tokenNum = Math.round(tokenNum);
         tokenNum = this.web3.utils.toWei(tokenNum.toString(), "wei");
 
@@ -198,7 +214,12 @@ class App extends Component {
       }
     }
     await this.bulkDeliverTokens(investorAddresses, amountList);
+    alert("Bulk DeliverTokens is completed!");
+
+    this.setState({ bulkTokenToBeDelivered: 0 });
+
     this.updateTokenSaleBalance();
+    this.updateInvestorListBalances();
   };
 
   deliverTokens = async (tokenNum, wallet) => {
@@ -206,6 +227,16 @@ class App extends Component {
     await this.tokenSaleInstance.methods.deliverTokens(wallet, tokens).send({
       from: this.state.curAddress,
     });
+  };
+  verifyKyc = () => {
+    for (const investor of this.state.investorList) {
+      if (!investor.kycCompleted) {
+        alert("Investor " + investor.name + " not KYC!");
+        return false;
+      }
+    }
+
+    return true;
   };
   bulkDeliverTokens = async (investorAddresses, amountList) => {
     try {
@@ -325,6 +356,7 @@ class App extends Component {
               width: "100%",
               height: "100%",
               backgroundColor: "#E0E0E0",
+              "vertical-align": "top",
             }}
           >
             <thead>
@@ -383,10 +415,16 @@ class App extends Component {
             </thead>
             <tbody>
               <tr>
-                <td style={{ width: "30%", backgroundColor: "#CCFFE5" }}>
+                <td
+                  style={{
+                    "vertical-align": "top",
+                    width: "30%",
+                    backgroundColor: "#CCFFE5",
+                  }}
+                >
                   <h1>Investor section</h1>
                   <p>
-                    Your wallet:
+                    Wallet:
                     <strong>
                       <a
                         href={`https://ropsten.etherscan.io/address/${this.state.curAddress}`}
@@ -395,7 +433,7 @@ class App extends Component {
                       </a>
                     </strong>
                     <br />
-                    Your Balance: ETH: <strong> {this.state.curBalance}</strong>
+                    Balance: ETH: <strong> {this.state.curBalance}</strong>
                     <br />
                     {this.state.tokenSymbol}:{" "}
                     <strong> {this.state.userTokens} </strong>
@@ -404,7 +442,13 @@ class App extends Component {
                     Is Kyc Whitelisted? {this.state.isWhiteListed.toString()}
                   </h3>
                 </td>
-                <td style={{ width: "70%", backgroundColor: "#CCFFFF" }}>
+                <td
+                  style={{
+                    "vertical-align": "top",
+                    width: "70%",
+                    backgroundColor: "#CCFFFF",
+                  }}
+                >
                   <h1>Admin section</h1>
                   <p>
                     Investor to be added to WhiteList:
@@ -418,6 +462,8 @@ class App extends Component {
                       Add to Whitelist
                     </button>
                   </p>
+                  <hr />
+
                   <h2>Deliver {this.state.tokenSymbol} for 1 Investor</h2>
                   <p>
                     Deliver
@@ -440,15 +486,36 @@ class App extends Component {
                   </p>
                   <hr />
                   <h2>Deliver {this.state.tokenSymbol} to bulk of Investors</h2>
+                  <h3>
+                    <input
+                      type="text"
+                      name="bulkTokenToBeDelivered"
+                      value={this.state.bulkTokenToBeDelivered}
+                      onChange={this.handleInputChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={this.handleUpdateTokenToDeliver}
+                    >
+                      Update Token to deliver
+                    </button>
+                    <button
+                      type="button"
+                      onClick={this.handleBulkDeliverTokens}
+                    >
+                      Bulk Deliver
+                    </button>
+                  </h3>
+
                   <table style={{ width: "100%" }}>
                     <thead>
                       <tr>
                         <th>Name</th>
                         <th>Wallet</th>
-                        <th>Balance</th>
-                        <th>Percentile</th>
                         <th>KYC Completed?</th>
-                        <th>Amount to deliver</th>
+                        <th>Balance</th>
+                        <th>Percentile %</th>
+                        <th>Tokens to deliver</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -456,19 +523,22 @@ class App extends Component {
                         return (
                           <tr key={i}>
                             <td>{investor.name}</td>
-                            <td>{investor.walletAddress}</td>
+                            <td>
+                              <a
+                                href={`https://ropsten.etherscan.io/address/${investor.walletAddress}`}
+                              >
+                                {investor.walletAddress}
+                              </a>
+                            </td>
+                            <td>{investor.kycCompleted.toString()}</td>
                             <td>{investor.balance}</td>
                             <td>{investor.holdingPercentile}</td>
-                            <td>{investor.kycCompleted.toString()}</td>
                             <td>{investor.amountToDeliver}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                  <button type="button" onClick={this.handleBulkDeliverTokens}>
-                    Bulk Deliver
-                  </button>
                 </td>
               </tr>
             </tbody>
